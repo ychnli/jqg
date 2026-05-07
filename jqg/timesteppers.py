@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 
-from jqg.solver import State, Params
+from jqg.model import Params, State
 
 def ab_coefficients(ablevel, dt):
     dt1_fe = dt

@@ -1,8 +1,13 @@
 import jax
 import jax.numpy as jnp
-from typing import Callable
+from typing import Callable, Sequence
 
-from jqg.diagnostics import compute_diagnostics
+from jqg.diagnostics import (
+    DEFAULT_DIAGNOSTICS,
+    DiagnosticSpec,
+    aggregate_intervals,
+    compute_diagnostics,
+)
 from jqg.model import Params, State, Aux
 
 
@@ -100,7 +105,34 @@ def run_kernel(params: Params, state0: State, timestepper: Callable, nsteps: int
         state_new, diag = step(params, state, timestepper)
         return state_new, diag
 
+    # this is essentially a for loop over the set number
+    # of steps. It returns the final state and a stacked array
+    # of diagnostics (at every step). 
     return jax.lax.scan(scan_step, state0, xs=None, length=nsteps)
 
 
 run_kernel_jit = jax.jit(run_kernel, static_argnames=("nsteps", "timestepper"))
+
+
+def run_diag_interval_pipeline(
+    params: Params,
+    state0: State,
+    timestepper: Callable,
+    nsteps: int,
+    interval_steps: int,
+    diagnostics_specs: Sequence[DiagnosticSpec] | None = None,
+):
+    """
+    Advance the model and aggregate per-step diagnostics to interval cadence.
+
+    Trailing substeps shorter than ``interval_steps`` are dropped; see
+    :func:`jqg.diagnostics.aggregate_intervals`.
+    """
+    specs = (
+        diagnostics_specs if diagnostics_specs is not None else DEFAULT_DIAGNOSTICS
+    )
+    final_state, stacked_diagnostics = run_kernel_jit(
+        params, state0, timestepper, nsteps
+    )
+    reduced = aggregate_intervals(stacked_diagnostics, interval_steps, specs)
+    return final_state, reduced

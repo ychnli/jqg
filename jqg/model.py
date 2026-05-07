@@ -1,12 +1,10 @@
-import jax
 import jax.numpy as jnp
-from math import pi
+import numpy as np
 from dataclasses import dataclass
+from math import pi
 from typing import Callable
 
-from jqg.solver import step
-from jqg.timesteppers import ab3
-from jqg.solver import run_kernel_jit
+from jax.tree_util import register_dataclass
 
 
 @dataclass(frozen=True)
@@ -53,40 +51,109 @@ class Aux:
     q: jnp.ndarray # spatial PV anomaly
 
 
+register_dataclass(
+    Grid,
+    meta_fields=("nx", "ny", "L", "W", "dx", "dy"),
+    data_fields=("k", "l", "kappa_sq", "spec_filter"),
+)
+register_dataclass(
+    Params,
+    meta_fields=("F1", "F2", "r_ekman", "dt"),
+    data_fields=("grid", "Ubg", "dQdy", "M_inv"),
+)
+register_dataclass(
+    State,
+    meta_fields=(),
+    data_fields=("q_hat", "dqdt_p", "dqdt_pp", "ablevel"),
+)
+register_dataclass(
+    Aux,
+    meta_fields=(),
+    data_fields=("psi_hat", "u", "v", "q"),
+)
+
+
 class QGModel:
     def __init__(self, nx: int = 64, ny: int | None = None, 
             L: float = 1e6, W: float | None = None, beta: float = 1.5e-11, 
             rd: float = 15_000.0, delta: float = 0.25, U1: float = 0.025, 
             U2: float = 0.0, r_ekman: float = 5.787e-7, dt: float = 7200.0, 
-            filterfac: float = 23.6, timestepper: Callable = ab3):
+            filterfac: float = 23.6,
+            timestepper: Callable | None = None):
+
+        self.nx = nx
+        self.ny = ny
+        self.L = L
+        self.W = W
+        self.beta = beta
+        self.rd = rd
+        self.delta = delta
+        self.U1 = U1
+        self.U2 = U2
+        self.r_ekman = r_ekman
+        self.dt = dt
+        self.filterfac = filterfac
+        if timestepper is None:
+            from jqg.timesteppers import ab3
+
+            timestepper = ab3
+        self.timestepper = timestepper
 
         self.grid = self._make_grid()
         self.params = self._make_params()
         self.state0 = self._initialize_state()
-        self.timestepper = timestepper
 
     def run(self, nsteps: int):
+        from jqg.solver import run_kernel_jit
+
         return run_kernel_jit(self.params, self.state0, self.timestepper, nsteps)
+
+    def run_and_diag_intervals(
+        self,
+        nsteps: int,
+        interval_steps: int,
+        *,
+        diagnostics_specs=None,
+    ):
+        """Run the model and reduce per-step diagnostics to interval cadence.
+
+        Uses per-step stacks from ``run_kernel_jit``, then aggregates each
+        window of ``interval_steps`` (trailing substeps discarded). See
+        :func:`jqg.diagnostics.aggregate_intervals`.
+        """
+        from jqg.solver import run_diag_interval_pipeline
+
+        return run_diag_interval_pipeline(
+            self.params,
+            self.state0,
+            self.timestepper,
+            nsteps,
+            interval_steps,
+            diagnostics_specs,
+        )
 
     def _initialize_state(self):
         """
         Initialize the state of the model to isotropic Gaussian noise
         This initialization is identical to the one used in pyqg.
         """
-        # set PV anomaly in real space
-        q1 = 1e-7 * jnp.random.rand(self.ny, self.nx) + \
-            1e-6 * (jnp.ones((self.ny, 1)) * jnp.random.rand(1, self.nx))
+        # set PV anomaly in real space (NumPy RNG: init is outside traced JIT)
+        q1 = jnp.asarray(
+            1e-7 * np.random.rand(self.ny, self.nx)
+            + 1e-6 * (np.ones((self.ny, 1)) * np.random.rand(1, self.nx)),
+        )
         q2 = jnp.zeros((self.ny, self.nx))
 
         # convert to spectral space
         q_hat1 = jnp.fft.rfftn(q1, s=(self.ny, self.nx), axes=(-2, -1))
         q_hat2 = jnp.fft.rfftn(q2, s=(self.ny, self.nx), axes=(-2, -1))
 
+        q_hat = jnp.stack([q_hat1, q_hat2], axis=0)
         state0 = State(
-            q_hat = jnp.stack([q_hat1, q_hat2], axis=0),
-            dqdt_p = jnp.zeros_like(q_hat1),
-            dqdt_pp = jnp.zeros_like(q_hat1),
-            ablevel = jnp.array(0),
+            q_hat=q_hat,
+            dqdt_p=jnp.zeros_like(q_hat),
+            dqdt_pp=jnp.zeros_like(q_hat),
+            ablevel=jnp.array(0),
         )
         return state0
 
@@ -121,11 +188,11 @@ class QGModel:
         kk = 2 * pi / self.L * jnp.arange(self.nx // 2 + 1) # zonal wavenumber
         ll = 2 * pi * jnp.fft.fftfreq(self.ny, d=self.dy) # meridional wavenumber
 
-        k, l = jnp.meshgrid(kk, ll)
+        k, l_m = jnp.meshgrid(kk, ll)
 
-        kappa_sq = k**2 + l**2 # squared norm of the wavenumber
+        kappa_sq = k**2 + l_m**2  # squared norm of the wavenumber
 
-        kstar = jnp.sqrt((k * self.dx)**2 + (l * self.dy)**2)
+        kstar = jnp.sqrt((k * self.dx)**2 + (l_m * self.dy)**2)
         cutoff = 0.65 * pi
         spec_filter = jnp.where(
             kstar <= cutoff,
@@ -135,7 +202,7 @@ class QGModel:
 
         grid = Grid(
             nx=self.nx, ny=self.ny, L=self.L, W=self.W, dx=self.dx, dy=self.dy,
-            k=k, l=l, kappa_sq=kappa_sq, spec_filter=spec_filter
+            k=k, l=l_m, kappa_sq=kappa_sq, spec_filter=spec_filter
         )
         return grid
 
@@ -149,7 +216,7 @@ class QGModel:
             self.beta - F2 * (self.U1 - self.U2),
         ])
 
-        M_inv = self._make_inversion_matrix()
+        M_inv = self._make_inversion_matrix(F1, F2)
 
         return Params(
             grid=self.grid,
@@ -162,7 +229,7 @@ class QGModel:
             M_inv=M_inv,
         )
 
-    def _make_inversion_matrix(self):
+    def _make_inversion_matrix(self, F1: float, F2: float):
         """
         Make the "inversion matrix" M_inv which is used to compute the 
         spectral streamfunction from the spectral PV anomaly. 
@@ -171,20 +238,19 @@ class QGModel:
             psi_hat_ikl = sum over j of M_inv_ijkl * q_hat_jkl
 
         Args:
-            grid: Grid object
             F1: float
             F2: float
         Returns:
             inversion_matrix: jnp.ndarray (2, 2, ny, nx//2+1)
         """
         kappa_sq = self.grid.kappa_sq
-        det = kappa_sq * (kappa_sq + self.F1 + self.F2)
+        det = kappa_sq * (kappa_sq + F1 + F2)
         inv_det = jnp.where(det == 0, 0, 1.0 / det)
 
-        A00 = -(kappa_sq + self.F2) * inv_det
-        A01 = -self.F1 * inv_det
-        A10 = -self.F2 * inv_det
-        A11 = -(kappa_sq + self.F1) * inv_det
+        A00 = -(kappa_sq + F2) * inv_det
+        A01 = -F1 * inv_det
+        A10 = -F2 * inv_det
+        A11 = -(kappa_sq + F1) * inv_det
 
         return jnp.stack([
             jnp.stack([A00, A01], axis=0),
