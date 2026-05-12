@@ -15,6 +15,7 @@ DiagnosticCompute = Callable[[Params, State, Aux], jnp.ndarray]
 @dataclass(frozen=True)
 class DiagnosticSpec:
     name: str
+    common_name: str
     compute: DiagnosticCompute
     interval_reduce: Reduction
 
@@ -29,17 +30,35 @@ def cfl(params: Params, state: State, aux: Aux) -> jnp.ndarray:
     return jnp.array(jnp.max(speed) * params.dt / grid.dx)
 
 
-def pv_spatial_mean(params: Params, state: State, aux: Aux) -> jnp.ndarray:
-    """Domain mean of PV anomaly (both layers, single scalar per step)."""
-    del params, state
-    return jnp.mean(aux.q)
-
-
 DEFAULT_DIAGNOSTICS: tuple[DiagnosticSpec, ...] = (
-    DiagnosticSpec(name="cfl", compute=cfl, interval_reduce="max"),
     DiagnosticSpec(
-        name="pv_spatial_mean",
-        compute=pv_spatial_mean,
+        name="cfl", 
+        common_name="CFL number",
+        compute=cfl, 
+        interval_reduce="max"
+    ),
+    DiagnosticSpec(
+        name="q",
+        common_name="PV anomaly",
+        compute=lambda params, state, aux: aux.q,
+        interval_reduce="mean",
+    ),
+    DiagnosticSpec(
+        name="u",
+        common_name="Zonal velocity",
+        compute=lambda params, state, aux: aux.u,
+        interval_reduce="mean",
+    ),
+    DiagnosticSpec(
+        name="v",
+        common_name="Meridional velocity",
+        compute=lambda params, state, aux: aux.v,
+        interval_reduce="mean",
+    ),
+    DiagnosticSpec(
+        name="psi_hat",
+        common_name="Streamfunction (spectral)",
+        compute=lambda params, state, aux: aux.psi_hat,
         interval_reduce="mean",
     ),
 )
