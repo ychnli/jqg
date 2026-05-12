@@ -13,7 +13,7 @@ from jqg.model import Params, State, Aux
 
 def psi_hat_from_q_hat(params: Params, state: State):
     """
-    Compute the spectral streamfunction and the spatial velocities 
+    Compute the spectral streamfunction and the spatial velocities
     from the spectral PV anomaly.
 
     Args:
@@ -76,15 +76,9 @@ def q_hat_tendency(params: Params, state: State):
     # add bottom frictional drag to tendency
     dq_hat_dt = dq_hat_dt.at[1].add(params.r_ekman * grid.kappa_sq[1] * psi_hat[1])
 
-    aux = Aux(
-        psi_hat=psi_hat,
-        u=u,
-        v=v,
-        q=q
-    )
-    
-    return dq_hat_dt, aux
+    aux = Aux(psi_hat=psi_hat, u=u, v=v, q=q)
 
+    return dq_hat_dt, aux
 
 
 def step(params: Params, state: State, timestepper):
@@ -96,7 +90,7 @@ def step(params: Params, state: State, timestepper):
 
     # update state using chosen timestepper
     state_new = timestepper(dq_hat_dt, state, params)
-    
+
     return state_new, diag
 
 
@@ -107,7 +101,7 @@ def run_kernel(params: Params, state0: State, timestepper: Callable, nsteps: int
 
     # this is essentially a for loop over the set number
     # of steps. It returns the final state and a stacked array
-    # of diagnostics (at every step). 
+    # of diagnostics (at every step).
     return jax.lax.scan(scan_step, state0, xs=None, length=nsteps)
 
 
@@ -128,9 +122,7 @@ def run_diag_interval_pipeline(
     Trailing substeps shorter than ``interval_steps`` are dropped; see
     :func:`jqg.diagnostics.aggregate_intervals`.
     """
-    specs = (
-        diagnostics_specs if diagnostics_specs is not None else DEFAULT_DIAGNOSTICS
-    )
+    specs = diagnostics_specs if diagnostics_specs is not None else DEFAULT_DIAGNOSTICS
     final_state, stacked_diagnostics = run_kernel_jit(
         params, state0, timestepper, nsteps
     )

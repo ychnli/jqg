@@ -32,10 +32,7 @@ def cfl(params: Params, state: State, aux: Aux) -> jnp.ndarray:
 
 DEFAULT_DIAGNOSTICS: tuple[DiagnosticSpec, ...] = (
     DiagnosticSpec(
-        name="cfl", 
-        common_name="CFL number",
-        compute=cfl, 
-        interval_reduce="max"
+        name="cfl", common_name="CFL number", compute=cfl, interval_reduce="max"
     ),
     DiagnosticSpec(
         name="q",

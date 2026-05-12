@@ -9,46 +9,46 @@ from jax.tree_util import register_dataclass
 
 @dataclass(frozen=True)
 class Grid:
-    nx: int                 # number of grid points in x direction
-    ny: int                 # number of grid points in y direction
-    L: float                 # domain size in x direction
-    W: float                 # domain size in y direction
-    dx: float                # grid spacing in x direction
-    dy: float                # grid spacing in y direction
-    k: jnp.ndarray          # zonal (x) wavenumber (ny, nx//2+1)
-    l: jnp.ndarray          # meridional (y) wavenumber (ny, nx//2+1)
-    kappa_sq: jnp.ndarray   # squared norm of the wavenumber (ny, nx//2+1)
-    spec_filter: jnp.ndarray # spectral filter function to damp high wavenumbers
-                            # (ny, nx//2+1)
+    nx: int  # number of grid points in x direction
+    ny: int  # number of grid points in y direction
+    L: float  # domain size in x direction
+    W: float  # domain size in y direction
+    dx: float  # grid spacing in x direction
+    dy: float  # grid spacing in y direction
+    k: jnp.ndarray  # zonal (x) wavenumber (ny, nx//2+1)
+    l: jnp.ndarray  # meridional (y) wavenumber (ny, nx//2+1)
+    kappa_sq: jnp.ndarray  # squared norm of the wavenumber (ny, nx//2+1)
+    spec_filter: jnp.ndarray  # spectral filter function to damp high wavenumbers
+    # (ny, nx//2+1)
 
 
 @dataclass(frozen=True)
 class Params:
-    grid: Grid # grid object
+    grid: Grid  # grid object
     F1: float
     F2: float
-    Ubg: jnp.ndarray # background zonal velocity
-    dQdy: jnp.ndarray # background meridional gradient of PV 
-    r_ekman: float # Ekman friction
-    dt: float # timestep
-    M_inv: jnp.ndarray # matrix to convert q to psi
+    Ubg: jnp.ndarray  # background zonal velocity
+    dQdy: jnp.ndarray  # background meridional gradient of PV
+    r_ekman: float  # Ekman friction
+    dt: float  # timestep
+    M_inv: jnp.ndarray  # matrix to convert q to psi
 
 
 @dataclass(frozen=True)
 class State:
-    q_hat: jnp.ndarray # potential vorticity (PV) anomaly in spectral space 
-                       # it has shape (2, ny, nx//2+1), complex
-    dqdt_p: jnp.ndarray   # previous tendency
+    q_hat: jnp.ndarray  # potential vorticity (PV) anomaly in spectral space
+    # it has shape (2, ny, nx//2+1), complex
+    dqdt_p: jnp.ndarray  # previous tendency
     dqdt_pp: jnp.ndarray  # two-step-old tendency
     ablevel: jnp.ndarray  # 0, 1, or 2
 
 
 @dataclass(frozen=True)
 class Aux:
-    psi_hat: jnp.ndarray # spectral streamfunction
-    u: jnp.ndarray # zonal velocity
-    v: jnp.ndarray # meridional velocity
-    q: jnp.ndarray # spatial PV anomaly
+    psi_hat: jnp.ndarray  # spectral streamfunction
+    u: jnp.ndarray  # zonal velocity
+    v: jnp.ndarray  # meridional velocity
+    q: jnp.ndarray  # spatial PV anomaly
 
 
 register_dataclass(
@@ -74,15 +74,24 @@ register_dataclass(
 
 
 class QGModel:
-    def __init__(self, nx: int = 64, ny: int | None = None, 
-            L: float = 1e6, W: float | None = None, beta: float = 1.5e-11, 
-            rd: float = 15_000.0, delta: float = 0.25, U1: float = 0.025, 
-            U2: float = 0.0, r_ekman: float = 5.787e-7, dt: float = 7200.0, 
-            filterfac: float = 23.6,
-            timestepper: Callable | None = None,
-            q1: jnp.ndarray | None = None,
-            q2: jnp.ndarray | None = None,
-        ):
+    def __init__(
+        self,
+        nx: int = 64,
+        ny: int | None = None,
+        L: float = 1e6,
+        W: float | None = None,
+        beta: float = 1.5e-11,
+        rd: float = 15_000.0,
+        delta: float = 0.25,
+        U1: float = 0.025,
+        U2: float = 0.0,
+        r_ekman: float = 5.787e-7,
+        dt: float = 7200.0,
+        filterfac: float = 23.6,
+        timestepper: Callable | None = None,
+        q1: jnp.ndarray | None = None,
+        q2: jnp.ndarray | None = None,
+    ):
 
         self.nx = nx
         self.ny = ny
@@ -135,9 +144,8 @@ class QGModel:
             diagnostics_specs,
         )
 
-    def _initialize_state(self, 
-        q1: jnp.ndarray | None = None, 
-        q2: jnp.ndarray | None = None
+    def _initialize_state(
+        self, q1: jnp.ndarray | None = None, q2: jnp.ndarray | None = None
     ) -> State:
         """
         Initialize the state of the model.
@@ -174,13 +182,13 @@ class QGModel:
     def _make_grid(self):
         """
         Make a grid for the model.
-        
+
         Args:
             nx: number of grid points in x direction
             ny: number of grid points in y direction
             L: domain size in x direction (m)
             W: domain size in y direction (m)
-            filterfac: filter factor for the spectral filter function 
+            filterfac: filter factor for the spectral filter function
                 (default is 23.6, see pyqg documentation for more details)
         Returns:
             Grid: a Grid object
@@ -194,29 +202,37 @@ class QGModel:
         self.dx = self.L / self.nx
         self.dy = self.W / self.ny
 
-        # note: since we take the real FFT, the hermitian symmetry implies that 
+        # note: since we take the real FFT, the hermitian symmetry implies that
         # f(-k, -l) = f*(k, l). This means that we only need to store values at
         # one half of the domain. By convention, we store the positive wavenumbers
         # for the zonal direction and both positive and negative values for the
         # meridional direction.
-        kk = 2 * pi / self.L * jnp.arange(self.nx // 2 + 1) # zonal wavenumber
-        ll = 2 * pi * jnp.fft.fftfreq(self.ny, d=self.dy) # meridional wavenumber
+        kk = 2 * pi / self.L * jnp.arange(self.nx // 2 + 1)  # zonal wavenumber
+        ll = 2 * pi * jnp.fft.fftfreq(self.ny, d=self.dy)  # meridional wavenumber
 
         k, l_m = jnp.meshgrid(kk, ll)
 
         kappa_sq = k**2 + l_m**2  # squared norm of the wavenumber
 
-        kstar = jnp.sqrt((k * self.dx)**2 + (l_m * self.dy)**2)
+        kstar = jnp.sqrt((k * self.dx) ** 2 + (l_m * self.dy) ** 2)
         cutoff = 0.65 * pi
         spec_filter = jnp.where(
             kstar <= cutoff,
             1.0,
-            jnp.exp(-self.filterfac * (kstar - cutoff)**4),
+            jnp.exp(-self.filterfac * (kstar - cutoff) ** 4),
         )
 
         grid = Grid(
-            nx=self.nx, ny=self.ny, L=self.L, W=self.W, dx=self.dx, dy=self.dy,
-            k=k, l=l_m, kappa_sq=kappa_sq, spec_filter=spec_filter
+            nx=self.nx,
+            ny=self.ny,
+            L=self.L,
+            W=self.W,
+            dx=self.dx,
+            dy=self.dy,
+            k=k,
+            l=l_m,
+            kappa_sq=kappa_sq,
+            spec_filter=spec_filter,
         )
         return grid
 
@@ -225,10 +241,12 @@ class QGModel:
         F2 = self.delta * F1
 
         Ubg = jnp.array([self.U1, self.U2])
-        dQdy = jnp.array([
-            self.beta + F1 * (self.U1 - self.U2),
-            self.beta - F2 * (self.U1 - self.U2),
-        ])
+        dQdy = jnp.array(
+            [
+                self.beta + F1 * (self.U1 - self.U2),
+                self.beta - F2 * (self.U1 - self.U2),
+            ]
+        )
 
         M_inv = self._make_inversion_matrix(F1, F2)
 
@@ -245,9 +263,9 @@ class QGModel:
 
     def _make_inversion_matrix(self, F1: float, F2: float):
         """
-        Make the "inversion matrix" M_inv which is used to compute the 
-        spectral streamfunction from the spectral PV anomaly. 
-        
+        Make the "inversion matrix" M_inv which is used to compute the
+        spectral streamfunction from the spectral PV anomaly.
+
         For i = 1, 2; j = 1, 2 we have:
             psi_hat_ikl = sum over j of M_inv_ijkl * q_hat_jkl
 
@@ -266,9 +284,10 @@ class QGModel:
         A10 = -F2 * inv_det
         A11 = -(kappa_sq + F1) * inv_det
 
-        return jnp.stack([
-            jnp.stack([A00, A01], axis=0),
-            jnp.stack([A10, A11], axis=0),
-        ], axis=0)
-
-
+        return jnp.stack(
+            [
+                jnp.stack([A00, A01], axis=0),
+                jnp.stack([A10, A11], axis=0),
+            ],
+            axis=0,
+        )

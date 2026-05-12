@@ -16,6 +16,7 @@ dependencies = [
     "netcdf4>=1.7.4",
     "notebook>=7.5.6",
     "numpy>=2.4.4",
+    "pyqg",
     "pytest>=9.0.3",
     "ruff>=0.15.12",
     "scipy>=1.17.1",
@@ -31,3 +32,6 @@ packages = ["jqg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+pyqg = { git = "https://github.com/pyqg/pyqg.git" }
