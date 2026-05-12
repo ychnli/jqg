@@ -79,7 +79,10 @@ class QGModel:
             rd: float = 15_000.0, delta: float = 0.25, U1: float = 0.025, 
             U2: float = 0.0, r_ekman: float = 5.787e-7, dt: float = 7200.0, 
             filterfac: float = 23.6,
-            timestepper: Callable | None = None):
+            timestepper: Callable | None = None,
+            q1: jnp.ndarray | None = None,
+            q2: jnp.ndarray | None = None,
+        ):
 
         self.nx = nx
         self.ny = ny
@@ -101,7 +104,7 @@ class QGModel:
 
         self.grid = self._make_grid()
         self.params = self._make_params()
-        self.state0 = self._initialize_state()
+        self.state0 = self._initialize_state(q1=q1, q2=q2)
 
     def run(self, nsteps: int):
         from jqg.solver import run_kernel_jit
@@ -132,17 +135,28 @@ class QGModel:
             diagnostics_specs,
         )
 
-    def _initialize_state(self):
+    def _initialize_state(self, 
+        q1: jnp.ndarray | None = None, 
+        q2: jnp.ndarray | None = None
+    ) -> State:
         """
-        Initialize the state of the model to isotropic Gaussian noise
-        This initialization is identical to the one used in pyqg.
+        Initialize the state of the model.
+
+        Args (optional):
+            q1: PV anomaly in the upper layer (ny, nx) (default is isotropic Gaussian noise)
+            q2: PV anomaly in the lower layer (ny, nx) (default is zero)
+
+        Returns:
+            State: a State object
         """
-        # set PV anomaly in real space (NumPy RNG: init is outside traced JIT)
-        q1 = jnp.asarray(
-            1e-7 * np.random.rand(self.ny, self.nx)
-            + 1e-6 * (np.ones((self.ny, 1)) * np.random.rand(1, self.nx)),
-        )
-        q2 = jnp.zeros((self.ny, self.nx))
+        # set PV anomaly in real space
+        if q1 is None:
+            q1 = jnp.asarray(
+                1e-7 * np.random.rand(self.ny, self.nx)
+                + 1e-6 * (np.ones((self.ny, 1)) * np.random.rand(1, self.nx)),
+            )
+        if q2 is None:
+            q2 = jnp.zeros((self.ny, self.nx))
 
         # convert to spectral space
         q_hat1 = jnp.fft.rfftn(q1, s=(self.ny, self.nx), axes=(-2, -1))
