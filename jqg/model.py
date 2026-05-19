@@ -2,7 +2,8 @@ import jax.numpy as jnp
 import numpy as np
 from dataclasses import dataclass
 from math import pi
-from typing import Callable
+from pathlib import Path
+from typing import Callable, Sequence
 
 from jax.tree_util import register_dataclass
 
@@ -115,34 +116,83 @@ class QGModel:
         self.params = self._make_params()
         self.state0 = self._initialize_state(q1=q1, q2=q2)
 
-    def run(self, nsteps: int):
-        from jqg.solver import run_kernel_jit
-
-        return run_kernel_jit(self.params, self.state0, self.timestepper, nsteps)
-
-    def run_and_diag_intervals(
+    def run(
         self,
         nsteps: int,
-        interval_steps: int,
         *,
-        diagnostics_specs=None,
+        interval_steps: int = 1,
+        diagnostics_specs: Sequence | None = None,
+        saveto: str | Path | None = None,
     ):
-        """Run the model and reduce per-step diagnostics to interval cadence.
+        """Advance the model and collect interval-reduced diagnostics.
 
-        Uses per-step stacks from ``run_kernel_jit``, then aggregates each
-        window of ``interval_steps`` (trailing substeps discarded). See
-        :func:`jqg.diagnostics.aggregate_intervals`.
+        Diagnostics are fused inside a nested scan: an inner loop of
+        ``interval_steps`` model steps is reduced per window, and an outer loop
+        stacks those windows. Trailing substeps shorter than ``interval_steps`` 
+        are dropped.
+
+        Args:
+            nsteps
+                Total model timesteps to attempt (truncated to a multiple of
+                ``interval_steps``).
+            interval_steps
+                Number of model timesteps per diagnostic window (default 1).
+            diagnostics_specs
+                Optional sequence of `DiagnosticSpec` objects.
+            saveto
+                If set, write diagnostics to this Zarr path and return only the
+                final state. Otherwise return ``(final_state, diagnostics)``.
+
+        Returns:
+            State or tuple[State, dict[str, Array]]
+                Final model state, and diagnostics unless ``saveto`` is given.
         """
-        from jqg.solver import run_diag_interval_pipeline
+        import jax
 
-        return run_diag_interval_pipeline(
-            self.params,
-            self.state0,
-            self.timestepper,
-            nsteps,
-            interval_steps,
-            diagnostics_specs,
+        from jqg.diagnostics import DEFAULT_DIAGNOSTICS, write_diagnostics_zarr
+        from jqg.solver import run_kernel_interval_jit
+
+        specs = (
+            diagnostics_specs
+            if diagnostics_specs is not None
+            else DEFAULT_DIAGNOSTICS
         )
+
+        # run the model and collect diagnostics
+        final_state, diagnostics = jax.block_until_ready(
+            run_kernel_interval_jit(
+                self.params,
+                self.state0,
+                self.timestepper,
+                nsteps,
+                interval_steps,
+                specs,
+            )
+        )
+
+        if saveto is not None:
+            n_windows = nsteps // interval_steps
+            write_diagnostics_zarr(
+                saveto,
+                diagnostics,
+                specs,
+                self.params,
+                interval_steps=interval_steps,
+                attrs={
+                    "nsteps": nsteps,
+                    "interval_steps": interval_steps,
+                    "n_windows": n_windows,
+                    "dt": float(self.dt),
+                    "nx": self.grid.nx,
+                    "ny": self.grid.ny,
+                    "L": float(self.L),
+                    "W": float(self.W),
+                },
+            )
+            return final_state
+
+        return final_state, diagnostics
+
 
     def _initialize_state(
         self, q1: jnp.ndarray | None = None, q2: jnp.ndarray | None = None

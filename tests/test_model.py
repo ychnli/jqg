@@ -18,16 +18,6 @@ def test_qgmodel_run_small():
     m = QGModel(nx=16, ny=16, dt=1.0)
     final_state, stacked_diag = jax.block_until_ready(m.run(nsteps=2))
     assert final_state.q_hat.shape == (2, 16, 9)
-    assert set(stacked_diag.keys()) >= {"cfl", "pv_spatial_mean"}
     assert stacked_diag["cfl"].shape == (2,)
-    assert stacked_diag["pv_spatial_mean"].shape == (2,)
+    assert stacked_diag["q"].shape == (2, 2, 16, 16)
 
-
-def test_run_and_diag_intervals():
-    m = QGModel(nx=16, ny=16, dt=1.0)
-    final_state, reduced = jax.block_until_ready(
-        m.run_and_diag_intervals(nsteps=8, interval_steps=4)
-    )
-    assert final_state.q_hat.shape == (2, 16, 9)
-    assert reduced["cfl"].shape == (2,)
-    assert reduced["pv_spatial_mean"].shape == (2,)

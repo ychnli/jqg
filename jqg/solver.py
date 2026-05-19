@@ -5,10 +5,17 @@ from typing import Callable, Sequence
 from jqg.diagnostics import (
     DEFAULT_DIAGNOSTICS,
     DiagnosticSpec,
-    aggregate_intervals,
     compute_diagnostics,
+    finalize_window_accumulators,
+    init_window_accumulators,
+    update_window_accumulators,
 )
-from jqg.model import Params, State, Aux
+from jqg.model import Aux, Params, State
+
+
+def _raise_if_cfl_exceeded(cfl) -> None:
+    if float(cfl) > 1.0:
+        raise ValueError("CFL condition violated")
 
 
 def psi_hat_from_q_hat(params: Params, state: State):
@@ -82,6 +89,17 @@ def q_hat_tendency(params: Params, state: State):
 
 
 def step(params: Params, state: State, timestepper):
+    """
+    Advance the model by one timestep.
+
+    Args:
+        params: Params object
+        state: State object
+        timestepper: Timestepper function
+    Returns:
+        state_new: State object
+        diag: Diagnostics dictionary
+    """
     # compute tendency of q_hat
     dq_hat_dt, aux = q_hat_tendency(params, state)
 
@@ -94,37 +112,63 @@ def step(params: Params, state: State, timestepper):
     return state_new, diag
 
 
-def run_kernel(params: Params, state0: State, timestepper: Callable, nsteps: int):
-    def scan_step(state, _):
-        state_new, diag = step(params, state, timestepper)
-        return state_new, diag
-
-    # this is essentially a for loop over the set number
-    # of steps. It returns the final state and a stacked array
-    # of diagnostics (at every step).
-    return jax.lax.scan(scan_step, state0, xs=None, length=nsteps)
-
-
-run_kernel_jit = jax.jit(run_kernel, static_argnames=("nsteps", "timestepper"))
-
-
-def run_diag_interval_pipeline(
+def run_kernel_interval(
     params: Params,
     state0: State,
     timestepper: Callable,
     nsteps: int,
     interval_steps: int,
-    diagnostics_specs: Sequence[DiagnosticSpec] | None = None,
+    specs: Sequence[DiagnosticSpec],
 ):
     """
-    Advance the model and aggregate per-step diagnostics to interval cadence.
+    Advance the model by nsteps, saving diagnostics for each interval window.
+    Trailing substeps fewer than ``interval_steps`` are dropped.
 
-    Trailing substeps shorter than ``interval_steps`` are dropped; see
-    :func:`jqg.diagnostics.aggregate_intervals`.
+    Args:
+        params: Model parameters
+        state0: Initial state object
+        timestepper: Timestepper function
+        nsteps: Total timesteps to advance
+        interval_steps: Number of timesteps per diagnostic window
+        specs: Sequence of DiagnosticSpec objects
+    Returns:
+        (state, diagnostics): tuple of the final state object and stacked diagnostics
+        for each interval window
     """
-    specs = diagnostics_specs if diagnostics_specs is not None else DEFAULT_DIAGNOSTICS
-    final_state, stacked_diagnostics = run_kernel_jit(
-        params, state0, timestepper, nsteps
-    )
-    reduced = aggregate_intervals(stacked_diagnostics, interval_steps, specs)
-    return final_state, reduced
+    if interval_steps < 1:
+        raise ValueError("interval_steps must be >= 1")
+
+    n_windows = nsteps // interval_steps
+
+    def outer_step(state: State, _):
+        state, diag = step(params, state, timestepper)
+        acc = init_window_accumulators(diag, specs)
+
+        def inner_step(carry, _):
+            state_in, acc_in = carry
+            state_new, diag_step = step(params, state_in, timestepper)
+            acc_new = update_window_accumulators(acc_in, diag_step, specs)
+            return (state_new, acc_new), None
+
+        if interval_steps > 1:
+            (state, acc), _ = jax.lax.scan(
+                inner_step,
+                (state, acc),
+                xs=None,
+                length=interval_steps - 1,
+            )
+
+        reduced = finalize_window_accumulators(acc, interval_steps, specs)
+
+        if "cfl" in reduced:
+            jax.debug.callback(_raise_if_cfl_exceeded, reduced["cfl"])
+
+        return state, reduced
+
+    return jax.lax.scan(outer_step, state0, xs=None, length=n_windows)
+
+
+run_kernel_interval_jit = jax.jit(
+    run_kernel_interval,
+    static_argnames=("nsteps", "interval_steps", "timestepper", "specs"),
+)

@@ -139,8 +139,9 @@ def test_forward_step_resynced_from_pyqg_each_substep():
         m._invert()
         psi_hat_ref = np.array(m.ph, dtype=np.complex128)
         state = _jqg_state_from_pyqg(m)
-        state, diag = step(model.params, state, model.timestepper)
-        psi_hat = np.array(diag["psi_hat"], dtype=np.complex128)
+        psi_hat, _, _ = psi_hat_from_q_hat(model.params, state)
+        psi_hat = np.array(psi_hat, dtype=np.complex128)
+        state, _diag = step(model.params, state, model.timestepper)
         assert np.allclose(psi_hat, psi_hat_ref), (
             f"psi_hat at step {i} after resync, max diff = {np.abs(psi_hat - psi_hat_ref).max()}"
         )

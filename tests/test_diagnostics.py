@@ -11,8 +11,8 @@ def _dummy_pv(params: Params, state: State, aux: Aux):
 
 def test_aggregate_max_mean_drop_remainder():
     specs = (
-        DiagnosticSpec("a", _dummy_pv, "max"),
-        DiagnosticSpec("b", _dummy_pv, "mean"),
+        DiagnosticSpec("a", "A", ("time",), "1", _dummy_pv, "max"),
+        DiagnosticSpec("b", "B", ("time",), "1", _dummy_pv, "mean"),
     )
     stacked = {
         "a": jnp.array([1.0, 2.0, 3.0, 4.0, 999.0]),
@@ -25,8 +25,8 @@ def test_aggregate_max_mean_drop_remainder():
 
 def test_aggregate_last_and_min():
     specs = (
-        DiagnosticSpec("a", _dummy_pv, "last"),
-        DiagnosticSpec("b", _dummy_pv, "min"),
+        DiagnosticSpec("a", "A", ("time",), "1", _dummy_pv, "last"),
+        DiagnosticSpec("b", "B", ("time",), "1", _dummy_pv, "min"),
     )
     stacked = {
         "a": jnp.array([10.0, 20.0, 30.0, 40.0]),
@@ -38,7 +38,7 @@ def test_aggregate_last_and_min():
 
 
 def test_aggregate_partial_window_yield_empty():
-    specs = (DiagnosticSpec("a", _dummy_pv, "max"),)
+    specs = (DiagnosticSpec("a", "A", ("time",), "1", _dummy_pv, "max"),)
     stacked = {"a": jnp.array([1.0, 2.0, 3.0])}
     out = aggregate_intervals(stacked, interval_steps=10, specs=specs)
     assert out["a"].shape == (0,)
