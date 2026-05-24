@@ -15,7 +15,7 @@ from jqg.model import Aux, Params, State
 
 def _raise_if_cfl_exceeded(cfl) -> None:
     if float(cfl) > 1.0:
-        raise ValueError("CFL condition violated")
+        raise ValueError(f"CFL condition violated: {cfl}")
 
 
 def psi_hat_from_q_hat(params: Params, state: State):

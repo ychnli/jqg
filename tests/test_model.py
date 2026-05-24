@@ -20,4 +20,3 @@ def test_qgmodel_run_small():
     assert final_state.q_hat.shape == (2, 16, 9)
     assert stacked_diag["cfl"].shape == (2,)
     assert stacked_diag["q"].shape == (2, 2, 16, 16)
-

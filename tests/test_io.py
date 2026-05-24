@@ -79,9 +79,7 @@ def test_diagnostics_to_dataset():
 def test_run_saveto_zarr(tmp_path: Path):
     m = QGModel(nx=8, ny=8, dt=1.0)
     out = tmp_path / "diag.zarr"
-    final_state = jax.block_until_ready(
-        m.run(nsteps=8, interval_steps=4, saveto=out)
-    )
+    final_state = jax.block_until_ready(m.run(nsteps=8, interval_steps=4, saveto=out))
     assert final_state.q_hat.shape == (2, 8, 5)
 
     ds = xr.open_zarr(out)
@@ -93,4 +91,3 @@ def test_run_saveto_zarr(tmp_path: Path):
     assert ds["time"].attrs["units"] == "s"
     assert "k" in ds.coords
     assert ds["k"].attrs["units"] == "rad m^-1"
-

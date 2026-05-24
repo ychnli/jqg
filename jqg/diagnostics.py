@@ -52,12 +52,12 @@ def ens_spectrum(params: Params, state: State, aux: Aux) -> jnp.ndarray:
 
 DEFAULT_DIAGNOSTICS = (
     DiagnosticSpec(
-        name="cfl", 
-        common_name="CFL number", 
+        name="cfl",
+        common_name="CFL number",
         dims=("time",),
         units="unitless",
-        compute=cfl, 
-        interval_reduce="max"
+        compute=cfl,
+        interval_reduce="max",
     ),
     DiagnosticSpec(
         name="q",

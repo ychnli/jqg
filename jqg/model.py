@@ -128,7 +128,7 @@ class QGModel:
 
         Diagnostics are fused inside a nested scan: an inner loop of
         ``interval_steps`` model steps is reduced per window, and an outer loop
-        stacks those windows. Trailing substeps shorter than ``interval_steps`` 
+        stacks those windows. Trailing substeps shorter than ``interval_steps``
         are dropped.
 
         Args:
@@ -153,9 +153,7 @@ class QGModel:
         from jqg.solver import run_kernel_interval_jit
 
         specs = (
-            diagnostics_specs
-            if diagnostics_specs is not None
-            else DEFAULT_DIAGNOSTICS
+            diagnostics_specs if diagnostics_specs is not None else DEFAULT_DIAGNOSTICS
         )
 
         # run the model and collect diagnostics
@@ -187,12 +185,17 @@ class QGModel:
                     "ny": self.grid.ny,
                     "L": float(self.L),
                     "W": float(self.W),
+                    "beta": float(self.beta),
+                    "rd": float(self.rd),
+                    "H1/H2": float(self.delta),
+                    "U1": float(self.U1),
+                    "U2": float(self.U2),
+                    "r_ekman": float(self.r_ekman),
                 },
             )
             return final_state
 
         return final_state, diagnostics
-
 
     def _initialize_state(
         self, q1: jnp.ndarray | None = None, q2: jnp.ndarray | None = None
