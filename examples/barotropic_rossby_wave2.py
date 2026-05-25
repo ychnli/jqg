@@ -6,7 +6,7 @@ from pathlib import Path
 from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
 
-name = "barotropic_rossby_wave"
+name = "barotropic_rossby_wave2"
 save_dir = "output/examples"
 
 # enable double precision
@@ -23,17 +23,17 @@ def main():
     day = 24 * hour
 
     T = 120 * day
-    dt = hour * 6
+    dt = hour / 4
     nsteps = int(T / dt)
-    interval_steps = 2
+    interval_steps = 24
 
     # initialize PV anomalies to a plane wave
     x = np.linspace(0, Lx, nx, endpoint=False)
     y = np.linspace(0, Ly, ny, endpoint=False)
     xgrid, ygrid = np.meshgrid(x, y, indexing="xy")
 
-    k = 2 * (2 * np.pi / Lx)
-    l = 0
+    k = (2 * np.pi / Lx)
+    l = 2 * (2 * np.pi / Ly)
     print(f"k * Ld = {k * Ld}")
     print(f"l * Ld = {l * Ld}")
 

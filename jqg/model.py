@@ -149,12 +149,10 @@ class QGModel:
         """
         import jax
 
-        from jqg.diagnostics import DEFAULT_DIAGNOSTICS, write_diagnostics_zarr
+        from jqg.diagnostics import ALL_DIAGNOSTICS, write_diagnostics_zarr
         from jqg.solver import run_kernel_interval_jit
 
-        specs = (
-            diagnostics_specs if diagnostics_specs is not None else DEFAULT_DIAGNOSTICS
-        )
+        specs = diagnostics_specs if diagnostics_specs is not None else ALL_DIAGNOSTICS
 
         # run the model and collect diagnostics
         final_state, diagnostics = jax.block_until_ready(

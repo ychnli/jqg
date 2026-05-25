@@ -13,6 +13,7 @@ def plot_single_layer_movie_from_zarr(
     save_dir: Path | str,
     output_path: Path | str,
     selector: Callable = select_upper_layer_pv_anomaly,
+    plot_streamfunction: bool = True,
     t0: int = 0,
     tf: int | None = None,
     nsteps: int | None = None,
@@ -49,15 +50,30 @@ def plot_single_layer_movie_from_zarr(
         raise ValueError("no time steps to plot (check t0, tf, nsteps)")
 
     fig, ax = plt.subplots(figsize=(6, 5))
+    selected_field = selector(ds.isel(time=time_indices[0]))
+    lev = selected_field.lev
     mesh = ax.pcolormesh(
         ds["x"].values / 1000,
         ds["y"].values / 1000,
-        selector(ds.isel(time=time_indices[0])),
+        selected_field,
         cmap="RdBu_r",
         vmin=vmin,
         vmax=vmax,
     )
-    fig.colorbar(mesh, ax=ax, extend='both')
+
+    streamfunction_plot = None
+    if plot_streamfunction:
+        streamfunction = ds["psi"].isel(time=time_indices[0]).sel(lev=lev)
+        streamfunction_plot = ax.contour(
+            ds["x"].values / 1000,
+            ds["y"].values / 1000,
+            streamfunction,
+            colors="black",
+            levels=11,
+            linewidths=1,
+        )
+
+    fig.colorbar(mesh, ax=ax, extend="both")
     ax.set_xlabel("x [km]")
     ax.set_ylabel("y [km]")
 
@@ -69,8 +85,20 @@ def plot_single_layer_movie_from_zarr(
     ax.set_title(_title_for_step(time_indices[0]))
 
     def update(frame: int):
+        nonlocal streamfunction_plot
         t = time_indices[frame]
         mesh.set_array(selector(ds.isel(time=t)).values.ravel())
+        if streamfunction_plot is not None:
+            streamfunction_plot.remove()
+            streamfunction = ds["psi"].isel(time=t).sel(lev=lev)
+            streamfunction_plot = ax.contour(
+                ds["x"].values / 1000,
+                ds["y"].values / 1000,
+                streamfunction,
+                colors="black",
+                levels=11,
+                linewidths=1,
+            )
         ax.set_title(_title_for_step(t))
         return (mesh,)
 
@@ -97,5 +125,3 @@ def plot_single_layer_movie_from_zarr(
     plt.close(fig)
     ds.close()
     return output_path
-
-

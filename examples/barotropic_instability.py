@@ -6,7 +6,7 @@ from pathlib import Path
 from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
 
-name = "barotropic_rossby_wave"
+name = "barotropic_instability"
 save_dir = "output/examples"
 
 # enable double precision
@@ -22,22 +22,20 @@ def main():
     hour = 3600  # sec
     day = 24 * hour
 
-    T = 120 * day
-    dt = hour * 6
+    T = 180 * day
+    dt = hour / 4  # 15 min timestep
     nsteps = int(T / dt)
-    interval_steps = 2
+    interval_steps = 24  # 6 hourly save interval
 
     # initialize PV anomalies to a plane wave
     x = np.linspace(0, Lx, nx, endpoint=False)
     y = np.linspace(0, Ly, ny, endpoint=False)
     xgrid, ygrid = np.meshgrid(x, y, indexing="xy")
 
-    k = 2 * (2 * np.pi / Lx)
-    l = 0
-    print(f"k * Ld = {k * Ld}")
-    print(f"l * Ld = {l * Ld}")
-
-    q_upper = -np.cos(k * xgrid + l * ygrid) * 1e-5
+    jet_width = Ly / 10
+    
+    noise = np.random.normal(0, 1e-7, size=(nx, ny))
+    q_upper = np.exp(-(ygrid - Ly / 2)**2 / (2 * jet_width**2)) * 1e-5 + noise
     q_lower = q_upper.copy()
 
     # initialize a model with no bottom friction, no background zonal flow

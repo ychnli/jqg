@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from typing import Callable, Sequence
 
 from jqg.diagnostics import (
-    DEFAULT_DIAGNOSTICS,
+    ALL_DIAGNOSTICS,
     DiagnosticSpec,
     compute_diagnostics,
     finalize_window_accumulators,

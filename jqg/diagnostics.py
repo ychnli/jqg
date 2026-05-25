@@ -50,7 +50,7 @@ def ens_spectrum(params: Params, state: State, aux: Aux) -> jnp.ndarray:
     return jnp.abs(state.q_hat) ** 2 / normalization
 
 
-DEFAULT_DIAGNOSTICS = (
+ALL_DIAGNOSTICS = (
     DiagnosticSpec(
         name="cfl",
         common_name="CFL number",
@@ -65,6 +65,16 @@ DEFAULT_DIAGNOSTICS = (
         dims=("time", "lev", "y", "x"),
         units="s^-1 m^-1",
         compute=lambda params, state, aux: aux.q,
+        interval_reduce="mean",
+    ),
+    DiagnosticSpec(
+        name="psi",
+        common_name="Streamfunction",
+        dims=("time", "lev", "y", "x"),
+        units="m^2 s^-1",
+        compute=lambda params, state, aux: jnp.fft.irfftn(
+            aux.psi_hat, s=(params.grid.ny, params.grid.nx), axes=(-2, -1)
+        ),
         interval_reduce="mean",
     ),
     DiagnosticSpec(
@@ -102,6 +112,13 @@ DEFAULT_DIAGNOSTICS = (
 )
 
 
+def build_diagnostics(diagnostic_names: Sequence[str]) -> Sequence[DiagnosticSpec]:
+    """
+    Helper function to build a sequence of DiagnosticSpec objects from a sequence of diagnostic names.
+    """
+    return tuple(spec for spec in ALL_DIAGNOSTICS if spec.name in diagnostic_names)
+
+
 def compute_diagnostics(
     params: Params,
     state: State,
@@ -110,7 +127,7 @@ def compute_diagnostics(
     specs: Sequence[DiagnosticSpec] | None = None,
 ) -> dict[str, jnp.ndarray]:
     if specs is None:
-        specs = DEFAULT_DIAGNOSTICS
+        specs = ALL_DIAGNOSTICS
     return {spec.name: spec.compute(params, state, aux) for spec in specs}
 
 
