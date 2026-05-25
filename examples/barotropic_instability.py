@@ -27,10 +27,10 @@ def main():
     nsteps = int(T / dt)
     interval_steps = 24  # 6 hourly save interval
 
-    # initialize PV anomalies to a plane wave
+    # initialize PV anomalies to a jet with white noise
     x = np.linspace(0, Lx, nx, endpoint=False)
     y = np.linspace(0, Ly, ny, endpoint=False)
-    xgrid, ygrid = np.meshgrid(x, y, indexing="xy")
+    _, ygrid = np.meshgrid(x, y, indexing="xy")
 
     jet_width = Ly / 10
     
