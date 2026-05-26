@@ -37,11 +37,7 @@ class Params:
 
 @dataclass(frozen=True)
 class State:
-    q_hat: jnp.ndarray  # potential vorticity (PV) anomaly in spectral space
-    # it has shape (2, ny, nx//2+1), complex
-    dqdt_p: jnp.ndarray  # previous tendency
-    dqdt_pp: jnp.ndarray # two-step-old tendency
-    ablevel: jnp.ndarray # 0, 1, or 2
+    q_hat: jnp.ndarray
 
 
 @dataclass(frozen=True)
@@ -62,11 +58,11 @@ register_dataclass(
     meta_fields=("F1", "F2", "r_ekman", "dt"),
     data_fields=("grid", "Ubg", "dQdy", "M_inv"),
 )
-register_dataclass(
-    State,
-    meta_fields=(),
-    data_fields=("q_hat", "dqdt_p", "dqdt_pp", "ablevel"),
-)
+# register_dataclass(
+#     State,
+#     meta_fields=(),
+#     data_fields=("q_hat",),
+# )
 register_dataclass(
     Aux,
     meta_fields=(),
@@ -108,7 +104,9 @@ class QGModel:
         self.filterfac = filterfac
         if timestepper is None:
             from jqg.timesteppers import ab3
-            timestepper = ab3
+
+            timestepper = ab3()
+
         self.timestepper = timestepper
 
         self.grid = self._make_grid()
