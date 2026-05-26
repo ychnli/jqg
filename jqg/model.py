@@ -40,8 +40,8 @@ class State:
     q_hat: jnp.ndarray  # potential vorticity (PV) anomaly in spectral space
     # it has shape (2, ny, nx//2+1), complex
     dqdt_p: jnp.ndarray  # previous tendency
-    dqdt_pp: jnp.ndarray  # two-step-old tendency
-    ablevel: jnp.ndarray  # 0, 1, or 2
+    dqdt_pp: jnp.ndarray # two-step-old tendency
+    ablevel: jnp.ndarray # 0, 1, or 2
 
 
 @dataclass(frozen=True)
@@ -108,7 +108,6 @@ class QGModel:
         self.filterfac = filterfac
         if timestepper is None:
             from jqg.timesteppers import ab3
-
             timestepper = ab3
         self.timestepper = timestepper
 
@@ -222,12 +221,7 @@ class QGModel:
         q_hat2 = jnp.fft.rfftn(q2, s=(self.ny, self.nx), axes=(-2, -1))
 
         q_hat = jnp.stack([q_hat1, q_hat2], axis=0)
-        state0 = State(
-            q_hat=q_hat,
-            dqdt_p=jnp.zeros_like(q_hat),
-            dqdt_pp=jnp.zeros_like(q_hat),
-            ablevel=jnp.array(0),
-        )
+        state0 = self.timestepper.create_state(q_hat=q_hat)
         return state0
 
     def _make_grid(self):

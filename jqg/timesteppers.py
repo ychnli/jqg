@@ -23,18 +23,41 @@ def ab_coefficients(ablevel, dt):
     return dt1, dt2, dt3
 
 
-def ab3(tendency, state: State, params: Params):
-    dt1, dt2, dt3 = ab_coefficients(state.ablevel, params.dt)
+class ab3:
+    @dataclass(frozen=True)
+    class State:
+        q_hat: jnp.ndarray
+        dqdt_p: jnp.ndarray
+        dqdt_pp: jnp.ndarray
+        ablevel: jnp.ndarray
 
-    q_hat_new = params.grid.spec_filter * (
-        state.q_hat + dt1 * tendency + dt2 * state.dqdt_p + dt3 * state.dqdt_pp
-    )
+    def __init__(self):
+        pass
 
-    state_new = State(
-        q_hat=q_hat_new,
-        dqdt_p=tendency,
-        dqdt_pp=state.dqdt_p,
-        ablevel=jnp.minimum(state.ablevel + 1, 2),
-    )
+    def create_state(self, q_hat):
+        return self.State(
+            q_hat=q_hat,
+            dqdt_p=jnp.zeros_like(q_hat),
+            dqdt_pp=jnp.zeros_like(q_hat),
+            ablevel=jnp.array(0),
+        )
 
-    return state_new
+    def __call__(self, tendency, state: State, params: Any):
+        dt1, dt2, dt3 = ab_coefficients(state.ablevel, params.dt)
+
+        q_hat_new = params.grid.spec_filter * (
+            state.q_hat + dt1 * tendency + dt2 * state.dqdt_p + dt3 * state.dqdt_pp
+        )
+
+        return self.State(
+            q_hat=q_hat_new,
+            dqdt_p=tendency,
+            dqdt_pp=state.dqdt_p,
+            ablevel=jnp.minimum(state.ablevel + 1, 2),
+        )
+# def rk4(tendency_func,state,params):
+#     k1, aux = tendency_func(params,state)
+
+#     state_out = State(
+#         q_hat = 
+#     )
