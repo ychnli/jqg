@@ -78,8 +78,11 @@ class RK4:
     def __call__(self, tendency, state, params):
         q_hat = state.q_hat
         dt = params.dt
-        k1, _ = self.tendency_func(params, state)
+        k1 = tendency
         k2, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt / 2 * k1))
         k3, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt / 2 * k2))
         k4, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt * k3))
-        return self.create_state(q_hat=q_hat + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4))
+        return self.create_state(
+            q_hat=params.grid.spec_filter
+            * (q_hat + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4))
+        )

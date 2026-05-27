@@ -6,7 +6,10 @@ from pathlib import Path
 from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
 
-name = "barotropic_rossby_wave"
+from jqg.timesteppers import RK4
+from jqg.solver import q_hat_tendency
+
+name = "barotropic_rossby_wave_rk4"
 save_dir = "output/examples"
 
 # enable double precision
@@ -53,6 +56,7 @@ def main():
         q1=q_upper,
         q2=q_lower,
         r_ekman=0,
+        timestepper=RK4(q_hat_tendency),
     )
 
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])

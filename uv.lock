@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
@@ -945,6 +945,7 @@ dependencies = [
     { name = "pytest" },
     { name = "ruff" },
     { name = "scipy" },
+    { name = "setuptools" },
     { name = "tqdm" },
     { name = "xarray" },
     { name = "zarr" },
@@ -970,6 +971,7 @@ requires-dist = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "ruff", specifier = ">=0.15.12" },
     { name = "scipy", specifier = ">=1.17.1" },
+    { name = "setuptools", specifier = ">=82.0.1" },
     { name = "tqdm", specifier = ">=4.67.3" },
     { name = "xarray", specifier = ">=2026.4.0" },
     { name = "zarr", specifier = ">=3.2.1" },

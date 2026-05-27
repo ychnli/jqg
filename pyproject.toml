@@ -21,6 +21,7 @@ dependencies = [
     "pytest>=9.0.3",
     "ruff>=0.15.12",
     "scipy>=1.17.1",
+    "setuptools>=82.0.1",
     "tqdm>=4.67.3",
     "xarray>=2026.4.0",
     "zarr>=3.2.1",

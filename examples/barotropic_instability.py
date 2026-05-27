@@ -3,11 +3,11 @@ import numpy as np
 from jqg import QGModel
 from pathlib import Path
 from jqg.timesteppers import RK4
-from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.solver import q_hat_tendency
+from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
 
-name = "barotropic_instability"
+name = "barotropic_instability_ab3"
 save_dir = "output/examples"
 
 # Force JAX to use GPU (must be called before any JAX operations)
@@ -54,7 +54,7 @@ def main():
         q1=q_upper,
         q2=q_lower,
         r_ekman=0,
-        timestepper=RK4(q_hat_tendency),
+        # timestepper=RK4(q_hat_tendency),
     )
 
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])
