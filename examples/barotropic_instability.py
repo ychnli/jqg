@@ -2,13 +2,16 @@ import jax
 import numpy as np
 from jqg import QGModel
 from pathlib import Path
-
+from jqg.timesteppers import RK4
+from jqg.solver import q_hat_tendency
 from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
 
-name = "barotropic_instability"
+name = "barotropic_instability_ab3"
 save_dir = "output/examples"
 
+# Force JAX to use GPU (must be called before any JAX operations)
+print("Available devices:", jax.devices())
 # enable double precision
 jax.config.update("jax_enable_x64", True)
 
@@ -23,7 +26,7 @@ def main():
     day = 24 * hour
 
     T = 180 * day
-    dt = hour / 4  # 15 min timestep
+    dt = hour / 16  # 15 min timestep
     nsteps = int(T / dt)
     interval_steps = 24  # 6 hourly save interval
 
@@ -33,9 +36,9 @@ def main():
     _, ygrid = np.meshgrid(x, y, indexing="xy")
 
     jet_width = Ly / 10
-    
+
     noise = np.random.normal(0, 1e-7, size=(nx, ny))
-    q_upper = np.exp(-(ygrid - Ly / 2)**2 / (2 * jet_width**2)) * 1e-5 + noise
+    q_upper = np.exp(-((ygrid - Ly / 2) ** 2) / (2 * jet_width**2)) * 1e-5 + noise
     q_lower = q_upper.copy()
 
     # initialize a model with no bottom friction, no background zonal flow
@@ -51,6 +54,7 @@ def main():
         q1=q_upper,
         q2=q_lower,
         r_ekman=0,
+        # timestepper=RK4(q_hat_tendency),
     )
 
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])

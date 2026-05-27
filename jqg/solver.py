@@ -88,7 +88,7 @@ def q_hat_tendency(params: Params, state: State):
     return dq_hat_dt, aux
 
 
-def step(params: Params, state: State, timestepper):
+def step(params: Params, state: State, timestepper: Callable):
     """
     Advance the model by one timestep.
 

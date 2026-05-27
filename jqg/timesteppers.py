@@ -1,6 +1,7 @@
 import jax.numpy as jnp
-
-from jqg.model import Params, State
+from dataclasses import dataclass
+from jqg.model import Params, State as BaseState
+from jax.tree_util import register_dataclass
 
 
 def ab_coefficients(ablevel, dt):
@@ -25,39 +26,63 @@ def ab_coefficients(ablevel, dt):
 
 class ab3:
     @dataclass(frozen=True)
-    class State:
-        q_hat: jnp.ndarray
+    class ab3State(BaseState):
         dqdt_p: jnp.ndarray
         dqdt_pp: jnp.ndarray
         ablevel: jnp.ndarray
 
+    ab3State = register_dataclass(
+        ab3State,
+        meta_fields=(),
+        data_fields=("q_hat", "dqdt_p", "dqdt_pp", "ablevel"),
+    )
+
     def __init__(self):
         pass
 
-    def create_state(self, q_hat):
-        return self.State(
+    def create_state(self, q_hat: jnp.ndarray):
+        return self.ab3State(
             q_hat=q_hat,
             dqdt_p=jnp.zeros_like(q_hat),
             dqdt_pp=jnp.zeros_like(q_hat),
             ablevel=jnp.array(0),
         )
 
-    def __call__(self, tendency, state: State, params: Any):
+    def __call__(self, tendency, state: State, params: Params):
         dt1, dt2, dt3 = ab_coefficients(state.ablevel, params.dt)
-
         q_hat_new = params.grid.spec_filter * (
             state.q_hat + dt1 * tendency + dt2 * state.dqdt_p + dt3 * state.dqdt_pp
         )
-
-        return self.State(
+        return self.ab3State(
             q_hat=q_hat_new,
             dqdt_p=tendency,
             dqdt_pp=state.dqdt_p,
             ablevel=jnp.minimum(state.ablevel + 1, 2),
         )
-# def rk4(tendency_func,state,params):
-#     k1, aux = tendency_func(params,state)
 
-#     state_out = State(
-#         q_hat = 
-#     )
+
+class RK4:
+
+    RK4State = register_dataclass(
+        BaseState,
+        meta_fields=(),
+        data_fields=("q_hat",),
+    )
+
+    def __init__(self, tendency_func: Callable):
+        self.tendency_func: Callable = tendency_func
+
+    def create_state(self, q_hat: jnp.ndarray):
+        return BaseState(q_hat)
+
+    def __call__(self, tendency, state, params):
+        q_hat = state.q_hat
+        dt = params.dt
+        k1 = tendency
+        k2, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt / 2 * k1))
+        k3, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt / 2 * k2))
+        k4, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt * k3))
+        return self.create_state(
+            q_hat=params.grid.spec_filter
+            * (q_hat + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4))
+        )
