@@ -6,6 +6,7 @@ from jqg.timesteppers import RK4
 from jqg.solver import q_hat_tendency
 from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
+import timeit
 
 name = "barotropic_instability_ab3"
 save_dir = "output/examples"
@@ -58,7 +59,8 @@ def main():
     )
 
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])
-
+    
+    start_time = timeit.default_timer()
     print("Running model...")
     _ = jax.block_until_ready(
         model.run(
@@ -68,9 +70,11 @@ def main():
             diagnostics_specs=diagnostics,
         )
     )
-    print("done!")
+    end_time = timeit.default_timer()
+    print(f"done in {end_time-start_time} seconds")
 
     print("Plotting movie...")
+    start_time = timeit.default_timer()
     plot_single_layer_movie_from_zarr(
         out,
         Path(save_dir) / f"{name}.mp4",
@@ -80,7 +84,8 @@ def main():
         fps=30,
         dpi=250,
     )
-    print("done!")
+    end_time = timeit.default_timer()
+    print(f"done in {end_time-start_time} seconds)
 
 
 if __name__ == "__main__":
