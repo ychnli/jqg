@@ -10,7 +10,7 @@ from jqg.diagnostics import (
     init_window_accumulators,
     update_window_accumulators,
 )
-from jqg.model import Aux, Params, State
+from jqg.model import AbstractState, Aux, Params
 
 
 def _raise_if_cfl_exceeded(cfl) -> None:
@@ -18,14 +18,14 @@ def _raise_if_cfl_exceeded(cfl) -> None:
         raise ValueError(f"CFL condition violated: {cfl}")
 
 
-def psi_hat_from_q_hat(params: Params, state: State):
+def psi_hat_from_q_hat(params: Params, state: AbstractState):
     """
     Compute the spectral streamfunction and the spatial velocities
     from the spectral PV anomaly.
 
     Args:
         params: Params object
-        state: State object
+        state: AbstractState object
     Returns:
         psi_hat: jnp.ndarray (2, ny, nx//2+1)
         u: jnp.ndarray (2, ny, nx)
@@ -45,14 +45,14 @@ def psi_hat_from_q_hat(params: Params, state: State):
     return psi_hat, u, v
 
 
-def q_hat_tendency(params: Params, state: State):
+def q_hat_tendency(params: Params, state: AbstractState):
     """
     Compute the tendency of the spectral PV anomaly along with auxiliary quantities
     produced in the process.
 
     Args:
         params: Params object
-        state: State object
+        state: AbstractState object
     Returns:
         dq_hat_dt: jnp.ndarray (2, ny, nx//2+1) - tendency of spectral PV anomaly
         aux: auxiliary quantities like streamfunction, velocities, real space PV anomaly
@@ -88,16 +88,16 @@ def q_hat_tendency(params: Params, state: State):
     return dq_hat_dt, aux
 
 
-def step(params: Params, state: State, timestepper: Callable):
+def step(params: Params, state: AbstractState, timestepper: Callable):
     """
     Advance the model by one timestep.
 
     Args:
         params: Params object
-        state: State object
+        state: AbstractState object
         timestepper: Timestepper function
     Returns:
-        state_new: State object
+        state_new: AbstractState object
         diag: Diagnostics dictionary
     """
     # compute tendency of q_hat
@@ -114,7 +114,7 @@ def step(params: Params, state: State, timestepper: Callable):
 
 def run_kernel_interval(
     params: Params,
-    state0: State,
+    state0: AbstractState,
     timestepper: Callable,
     nsteps: int,
     interval_steps: int,
@@ -140,7 +140,7 @@ def run_kernel_interval(
 
     n_windows = nsteps // interval_steps
 
-    def outer_step(state: State, _):
+    def outer_step(state: AbstractState, _):
         state, diag = step(params, state, timestepper)
         acc = init_window_accumulators(diag, specs)
 

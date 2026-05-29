@@ -1,10 +1,10 @@
 import jax.numpy as jnp
 
 from jqg.diagnostics import DiagnosticSpec, aggregate_intervals
-from jqg.model import Aux, Params, State
+from jqg.model import AbstractState, Aux, Params
 
 
-def _dummy_pv(params: Params, state: State, aux: Aux):
+def _dummy_pv(params: Params, state: AbstractState, aux: Aux):
     del params, state, aux
     return jnp.array(0.0)
 

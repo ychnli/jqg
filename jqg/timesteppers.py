@@ -1,7 +1,8 @@
 import jax.numpy as jnp
 from dataclasses import dataclass
-from jqg.model import Params, State as BaseState
+from jqg.model import AbstractState, Params
 from jax.tree_util import register_dataclass
+from typing import Callable
 
 
 def ab_coefficients(ablevel, dt):
@@ -24,15 +25,19 @@ def ab_coefficients(ablevel, dt):
     return dt1, dt2, dt3
 
 
-class ab3:
+class AB3:
+    """
+    Adams-Bashforth 3rd order timestepper.
+    """
+
     @dataclass(frozen=True)
-    class ab3State(BaseState):
+    class AB3State(AbstractState):
         dqdt_p: jnp.ndarray
         dqdt_pp: jnp.ndarray
         ablevel: jnp.ndarray
 
-    ab3State = register_dataclass(
-        ab3State,
+    AB3State = register_dataclass(
+        AB3State,
         meta_fields=(),
         data_fields=("q_hat", "dqdt_p", "dqdt_pp", "ablevel"),
     )
@@ -41,19 +46,19 @@ class ab3:
         pass
 
     def create_state(self, q_hat: jnp.ndarray):
-        return self.ab3State(
+        return self.AB3State(
             q_hat=q_hat,
             dqdt_p=jnp.zeros_like(q_hat),
             dqdt_pp=jnp.zeros_like(q_hat),
             ablevel=jnp.array(0),
         )
 
-    def __call__(self, tendency, state: State, params: Params):
+    def __call__(self, tendency, state: AB3State, params: Params):
         dt1, dt2, dt3 = ab_coefficients(state.ablevel, params.dt)
         q_hat_new = params.grid.spec_filter * (
             state.q_hat + dt1 * tendency + dt2 * state.dqdt_p + dt3 * state.dqdt_pp
         )
-        return self.ab3State(
+        return self.AB3State(
             q_hat=q_hat_new,
             dqdt_p=tendency,
             dqdt_pp=state.dqdt_p,
@@ -62,9 +67,12 @@ class ab3:
 
 
 class RK4:
+    @dataclass(frozen=True)
+    class RK4State(AbstractState):
+        pass
 
     RK4State = register_dataclass(
-        BaseState,
+        RK4State,
         meta_fields=(),
         data_fields=("q_hat",),
     )
@@ -73,9 +81,9 @@ class RK4:
         self.tendency_func: Callable = tendency_func
 
     def create_state(self, q_hat: jnp.ndarray):
-        return BaseState(q_hat)
+        return self.RK4State(q_hat=q_hat)
 
-    def __call__(self, tendency, state, params):
+    def __call__(self, tendency, state: RK4State, params: Params):
         q_hat = state.q_hat
         dt = params.dt
         k1 = tendency

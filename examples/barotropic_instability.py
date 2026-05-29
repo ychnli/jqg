@@ -59,7 +59,7 @@ def main():
     )
 
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])
-    
+
     start_time = timeit.default_timer()
     print("Running model...")
     _ = jax.block_until_ready(
@@ -71,7 +71,7 @@ def main():
         )
     )
     end_time = timeit.default_timer()
-    print(f"done in {end_time-start_time} seconds")
+    print(f"done in {end_time - start_time} seconds")
 
     print("Plotting movie...")
     start_time = timeit.default_timer()
@@ -85,7 +85,7 @@ def main():
         dpi=250,
     )
     end_time = timeit.default_timer()
-    print(f"done in {end_time-start_time} seconds)
+    print(f"done in {end_time - start_time} seconds")
 
 
 if __name__ == "__main__":

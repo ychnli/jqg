@@ -8,8 +8,8 @@ import numpy as np
 import pyqg
 
 from jqg import QGModel
-from jqg.model import State
 from jqg.solver import psi_hat_from_q_hat, step
+from jqg.timesteppers import AB3
 
 # use double precision for testing
 jax.config.update("jax_enable_x64", True)
@@ -74,9 +74,9 @@ def test_invert():
     assert np.allclose(v, v_ref, atol=1e-12)
 
 
-def _jqg_state_from_pyqg(m: pyqg.QGModel) -> State:
+def _jqg_state_from_pyqg(m: pyqg.QGModel) -> AB3.AB3State:
     """Match pyqg's PV spectrum and AB3 history before advancing jqg one step."""
-    return State(
+    return AB3.AB3State(
         q_hat=jnp.asarray(np.array(m.qh), dtype=jnp.complex128),
         dqdt_p=jnp.asarray(np.array(m.dqhdt_p), dtype=jnp.complex128),
         dqdt_pp=jnp.asarray(np.array(m.dqhdt_pp), dtype=jnp.complex128),

@@ -11,11 +11,11 @@ import xarray as xr
 
 jax.config.update("jax_enable_x64", True)
 
-from jqg.model import Aux, Params, State
+from jqg.model import AbstractState, Aux, Params
 
 Reduction = Literal["max", "mean", "last", "min"]
 
-DiagnosticCompute = Callable[[Params, State, Aux], jnp.ndarray]
+DiagnosticCompute = Callable[[Params, AbstractState, Aux], jnp.ndarray]
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,7 @@ class DiagnosticSpec:
     interval_reduce: Reduction
 
 
-def cfl(params: Params, state: State, aux: Aux) -> jnp.ndarray:
+def cfl(params: Params, state: AbstractState, aux: Aux) -> jnp.ndarray:
     del state
     grid = params.grid
     speed = jnp.maximum(
@@ -38,13 +38,13 @@ def cfl(params: Params, state: State, aux: Aux) -> jnp.ndarray:
     return jnp.array(jnp.max(speed) * params.dt / grid.dx)
 
 
-def ke_spectrum(params: Params, state: State, aux: Aux) -> jnp.ndarray:
+def ke_spectrum(params: Params, state: AbstractState, aux: Aux) -> jnp.ndarray:
     g = params.grid
     normalization = jnp.array((g.nx * g.ny) ** 2, dtype=jnp.int64)
     return g.kappa_sq * jnp.abs(aux.psi_hat) ** 2 / normalization
 
 
-def ens_spectrum(params: Params, state: State, aux: Aux) -> jnp.ndarray:
+def ens_spectrum(params: Params, state: AbstractState, aux: Aux) -> jnp.ndarray:
     g = params.grid
     normalization = jnp.array((g.nx * g.ny) ** 2, dtype=jnp.int64)
     return jnp.abs(state.q_hat) ** 2 / normalization
@@ -121,7 +121,7 @@ def build_diagnostics(diagnostic_names: Sequence[str]) -> Sequence[DiagnosticSpe
 
 def compute_diagnostics(
     params: Params,
-    state: State,
+    state: AbstractState,
     aux: Aux,
     *,
     specs: Sequence[DiagnosticSpec] | None = None,

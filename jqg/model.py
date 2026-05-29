@@ -36,7 +36,7 @@ class Params:
 
 
 @dataclass(frozen=True)
-class State:
+class AbstractState:
     q_hat: jnp.ndarray
 
 
@@ -58,11 +58,6 @@ register_dataclass(
     meta_fields=("F1", "F2", "r_ekman", "dt"),
     data_fields=("grid", "Ubg", "dQdy", "M_inv"),
 )
-# register_dataclass(
-#     State,
-#     meta_fields=(),
-#     data_fields=("q_hat",),
-# )
 register_dataclass(
     Aux,
     meta_fields=(),
@@ -103,12 +98,12 @@ class QGModel:
         self.dt = dt
         self.filterfac = filterfac
         if timestepper is None:
-            from jqg.timesteppers import ab3
+            # default to AB3, which is also used by pyqg
+            from jqg.timesteppers import AB3
 
-            timestepper = ab3()
+            timestepper = AB3()
 
         self.timestepper = timestepper
-
         self.grid = self._make_grid()
         self.params = self._make_params()
         self.state0 = self._initialize_state(q1=q1, q2=q2)
@@ -141,7 +136,7 @@ class QGModel:
                 final state. Otherwise return ``(final_state, diagnostics)``.
 
         Returns:
-            State or tuple[State, dict[str, Array]]
+            AbstractState or tuple[AbstractState, dict[str, Array]]
                 Final model state, and diagnostics unless ``saveto`` is given.
         """
         import jax
@@ -194,7 +189,7 @@ class QGModel:
 
     def _initialize_state(
         self, q1: jnp.ndarray | None = None, q2: jnp.ndarray | None = None
-    ) -> State:
+    ) -> AbstractState:
         """
         Initialize the state of the model.
 
@@ -203,7 +198,7 @@ class QGModel:
             q2: PV anomaly in the lower layer (ny, nx) (default is zero)
 
         Returns:
-            State: a State object
+            AbstractState: timestepper-specific state object
         """
         # set PV anomaly in real space
         if q1 is None:
