@@ -55,7 +55,7 @@ def q_hat_tendency(params: Params, state: State):
         state: State object
     Returns:
         dq_hat_dt: jnp.ndarray (2, ny, nx//2+1) - tendency of spectral PV anomaly
-        aux: Aux object
+        aux: auxiliary quantities like streamfunction, velocities, real space PV anomaly
     """
 
     grid = params.grid

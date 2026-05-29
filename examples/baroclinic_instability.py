@@ -6,7 +6,7 @@ from pathlib import Path
 from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
 
-name = "barotropic_rossby_wave2"
+name = "baroclinic_instability"
 save_dir = "output/examples"
 
 # enable double precision
@@ -22,45 +22,36 @@ def main():
     hour = 3600  # sec
     day = 24 * hour
 
-    T = 120 * day
-    dt = hour
+    T = 40 * day
+    dt = hour / 4  # 15 min timestep
     nsteps = int(T / dt)
-    interval_steps = 24
+    interval_steps = 24  # 6 hourly save interval
 
     # initialize PV anomalies to a plane wave
     x = np.linspace(0, Lx, nx, endpoint=False)
     y = np.linspace(0, Ly, ny, endpoint=False)
     xgrid, ygrid = np.meshgrid(x, y, indexing="xy")
 
-    def periodic_distance(coord, center, L):
-        return (coord - center + L / 2) % L - L / 2
-
-    dx = periodic_distance(xgrid, Lx / 2, Lx)
-    dy = periodic_distance(ygrid, Ly / 2, Ly)
-
-    k = 6 * (2 * np.pi / Lx)
-    l = 0 * (2 * np.pi / Ly)
+    k = 10 * (2 * np.pi / Lx)
+    l = 0
     print(f"k * Ld = {k * Ld}")
     print(f"l * Ld = {l * Ld}")
 
-    R = Ly / 4
-    gaussian_envelope = np.exp(-(dx**2 + dy**2) / R**2)
-    q_upper = -np.cos(k * xgrid + l * ygrid) * gaussian_envelope * 1e-9
-    q_lower = q_upper.copy()
+    q_upper = -np.cos(k * xgrid + l * ygrid) * 1e-5
+    q_lower = np.cos(k * xgrid + l * ygrid) * 1e-5
 
-    # initialize a model with no bottom friction, no background zonal flow
-    # and equal layer thicknesses
     model = QGModel(
         nx=nx,
         ny=ny,
         dt=dt,
-        U1=0,
-        U2=0,
+        U1=0.05,
+        U2=-0.05,
         delta=1.0,
         rd=Ld,
         q1=q_upper,
         q2=q_lower,
         r_ekman=0,
+        beta=0,
     )
 
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])
@@ -80,12 +71,12 @@ def main():
     plot_single_layer_movie_from_zarr(
         out,
         Path(save_dir) / f"{name}.mp4",
+        plot_streamfunction=False,
         title="Upper level PV anomaly",
-        vmin=-1e-9,
-        vmax=1e-9,
+        vmin=-2e-5,
+        vmax=2e-5,
         fps=30,
         dpi=250,
-        plot_streamfunction=False,
     )
     print("done!")
 

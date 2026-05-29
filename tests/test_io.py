@@ -7,7 +7,7 @@ import xarray as xr
 
 from jqg import QGModel
 from jqg.diagnostics import (
-    DEFAULT_DIAGNOSTICS,
+    ALL_DIAGNOSTICS,
     aggregate_intervals,
     diagnostics_to_dataset,
     write_diagnostics_zarr,
@@ -18,7 +18,7 @@ from jqg.solver import run_kernel_interval_jit
 def test_nested_scan_matches_aggregate_intervals():
     m = QGModel(nx=16, ny=16, dt=1.0)
     nsteps, interval_steps = 8, 4
-    specs = DEFAULT_DIAGNOSTICS
+    specs = ALL_DIAGNOSTICS
 
     final_nested, reduced_nested = jax.block_until_ready(
         run_kernel_interval_jit(
@@ -58,7 +58,7 @@ def test_diagnostics_to_dataset():
         "cfl": np.array([0.1, 0.2]),
         "q": np.zeros((n_windows, 2, 8, 8)),
     }
-    specs = tuple(s for s in DEFAULT_DIAGNOSTICS if s.name in diagnostics)
+    specs = tuple(s for s in ALL_DIAGNOSTICS if s.name in diagnostics)
 
     ds = diagnostics_to_dataset(
         diagnostics,
