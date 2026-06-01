@@ -1,3 +1,9 @@
+"""
+This module defines the functions needed to compute the time derivative 
+of the model state used by the timestepper. It contains the "physics" 
+of the model.
+"""
+
 import jax
 import jax.numpy as jnp
 from typing import Callable, Sequence

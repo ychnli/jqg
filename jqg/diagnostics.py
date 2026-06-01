@@ -1,3 +1,10 @@
+"""
+This module specifies how to compute and save diagnostics from the model state.
+A diagnostic is specified by a DiagnosticSpec object, which declares how it 
+should be computed from the model state and auxiliary variables and some useful
+metadata.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,12 +27,12 @@ DiagnosticCompute = Callable[[Params, AbstractState, Aux], jnp.ndarray]
 
 @dataclass(frozen=True)
 class DiagnosticSpec:
-    name: str
-    common_name: str
-    dims: tuple[str, ...]
-    units: str
-    compute: DiagnosticCompute
-    interval_reduce: Reduction
+    name: str # unique name for the diagnostic
+    common_name: str # human-readable name for the diagnostic
+    dims: tuple[str, ...] # array dimensions
+    units: str # physical units
+    compute: DiagnosticCompute # function to compute the diagnostic
+    interval_reduce: Reduction # how to reduce the diagnostic over an interval
 
 
 def cfl(params: Params, state: AbstractState, aux: Aux) -> jnp.ndarray:

@@ -1,11 +1,36 @@
+"""
+This module defines various timesteppers used for the model.
+Attached to each timestepper is a dataclass that defines the
+state of the model at a given timestep needed to advance
+the model to the next timestep. Since all states require the
+spectral PV anomaly, each timestepper's state class inherits from
+an `AbstractState` class.
+
+Currently we support the following timesteppers:
+- AB3: Adams-Bashforth 3rd order timestepper
+- RK4: Runge-Kutta 4th order timestepper
+"""
+
 import jax.numpy as jnp
 from dataclasses import dataclass
 from jqg.model import AbstractState, Params
+from jqg.solver import q_hat_tendency
 from jax.tree_util import register_dataclass
-from typing import Callable
 
 
 def ab_coefficients(ablevel, dt):
+    """
+    Helper function to compute the coefficients for the Adams-Bashforth method.
+
+    Args:
+        ablevel: index for the order of the Adams-Bashforth method
+        dt: timestep
+
+    Returns:
+        dt1: coefficient for the first order Adams-Bashforth method
+        dt2: coefficient for the second order Adams-Bashforth method
+        dt3: coefficient for the third order Adams-Bashforth method
+    """
     dt1_fe = dt
     dt2_fe = 0.0
     dt3_fe = 0.0
@@ -28,13 +53,16 @@ def ab_coefficients(ablevel, dt):
 class AB3:
     """
     Adams-Bashforth 3rd order timestepper.
+
+    Since this method requires two previous tendencies, the initial
+    state is advanced twice using lower order AB methods.
     """
 
     @dataclass(frozen=True)
     class AB3State(AbstractState):
-        dqdt_p: jnp.ndarray
-        dqdt_pp: jnp.ndarray
-        ablevel: jnp.ndarray
+        dqdt_p: jnp.ndarray  # tendency from previous step
+        dqdt_pp: jnp.ndarray  # tendency from two steps ago
+        ablevel: jnp.ndarray  # index for the order of the Adams-Bashforth method
 
     AB3State = register_dataclass(
         AB3State,
@@ -67,6 +95,10 @@ class AB3:
 
 
 class RK4:
+    """
+    Runge-Kutta 4th order timestepper.
+    """
+
     @dataclass(frozen=True)
     class RK4State(AbstractState):
         pass
@@ -77,8 +109,8 @@ class RK4:
         data_fields=("q_hat",),
     )
 
-    def __init__(self, tendency_func: Callable):
-        self.tendency_func: Callable = tendency_func
+    def __init__(self):
+        pass
 
     def create_state(self, q_hat: jnp.ndarray):
         return self.RK4State(q_hat=q_hat)
@@ -87,9 +119,9 @@ class RK4:
         q_hat = state.q_hat
         dt = params.dt
         k1 = tendency
-        k2, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt / 2 * k1))
-        k3, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt / 2 * k2))
-        k4, _ = self.tendency_func(params, self.create_state(q_hat=q_hat + dt * k3))
+        k2, _ = q_hat_tendency(params, self.create_state(q_hat=q_hat + dt / 2 * k1))
+        k3, _ = q_hat_tendency(params, self.create_state(q_hat=q_hat + dt / 2 * k2))
+        k4, _ = q_hat_tendency(params, self.create_state(q_hat=q_hat + dt * k3))
         return self.create_state(
             q_hat=params.grid.spec_filter
             * (q_hat + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4))

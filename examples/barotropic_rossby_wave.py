@@ -7,7 +7,6 @@ from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
 
 from jqg.timesteppers import RK4
-from jqg.solver import q_hat_tendency
 
 name = "barotropic_rossby_wave_rk4"
 save_dir = "output/examples"
@@ -56,7 +55,7 @@ def main():
         q1=q_upper,
         q2=q_lower,
         r_ekman=0,
-        timestepper=RK4(q_hat_tendency),
+        timestepper=RK4(),
     )
 
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])
@@ -75,7 +74,7 @@ def main():
     print("Plotting movie...")
     plot_single_layer_movie_from_zarr(
         out,
-        Path(save_dir) / f"{name}.mp4",
+        Path(save_dir) / f"{name}.gif",
         title="Upper level PV anomaly",
         vmin=-1e-5,
         vmax=1e-5,

@@ -1,3 +1,8 @@
+"""
+This module defines how a QG model is initialized and run, and also includes 
+dataclasses for the model's grid, parameters, state, and auxiliary variables.
+"""
+
 import jax.numpy as jnp
 import numpy as np
 from dataclasses import dataclass

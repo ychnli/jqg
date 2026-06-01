@@ -2,8 +2,6 @@ import jax
 import numpy as np
 from jqg import QGModel
 from pathlib import Path
-from jqg.timesteppers import RK4
-from jqg.solver import q_hat_tendency
 from jqg.utils import plot_single_layer_movie_from_zarr
 from jqg.diagnostics import build_diagnostics
 import timeit
@@ -55,7 +53,6 @@ def main():
         q1=q_upper,
         q2=q_lower,
         r_ekman=0,
-        # timestepper=RK4(q_hat_tendency),
     )
 
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])

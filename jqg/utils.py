@@ -1,3 +1,7 @@
+"""
+Helper functions for plotting and saving model output.
+"""
+
 import xarray as xr
 from matplotlib import pyplot as plt
 from matplotlib.animation import FFMpegWriter, FuncAnimation, PillowWriter
