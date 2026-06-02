@@ -19,9 +19,13 @@ from jqg.diagnostics import (
 from jqg.model import AbstractState, Aux, Params
 
 
-def _raise_if_cfl_exceeded(cfl) -> None:
+def _raise_if_cfl_exceeded(cfl):
     if float(cfl) > 1.0:
         raise ValueError(f"CFL condition violated: {cfl}")
+
+def _raise_if_nan(x):
+    if jnp.isnan(x).any():
+        raise ValueError("NaN detected in diagnostic computation")
 
 
 def psi_hat_from_q_hat(params: Params, state: AbstractState):
@@ -168,6 +172,10 @@ def run_kernel_interval(
 
         if "cfl" in reduced:
             jax.debug.callback(_raise_if_cfl_exceeded, reduced["cfl"])
+
+        # it is expected that if any diagnostic has NaN, it will spread
+        # to all diagnostics (this should be confirmed?)
+        jax.debug.callback(_raise_if_nan, reduced[specs[0].name])
 
         return state, reduced
 
