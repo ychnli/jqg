@@ -1,5 +1,5 @@
 """
-This module defines how a QG model is initialized and run, and also includes 
+This module defines how a QG model is initialized and run, and also includes
 dataclasses for the model's grid, parameters, state, and auxiliary variables.
 """
 
@@ -146,10 +146,11 @@ class QGModel:
         """
         import jax
 
-        from jqg.diagnostics import ALL_DIAGNOSTICS, write_diagnostics_zarr
+        from jqg.diagnostics import write_diagnostics_zarr, DEFAULT_DIAGNOSTICS
         from jqg.solver import run_kernel_interval_jit
 
-        specs = diagnostics_specs if diagnostics_specs is not None else ALL_DIAGNOSTICS
+        if diagnostics_specs is None:
+            diagnostics_specs = DEFAULT_DIAGNOSTICS
 
         # run the model and collect diagnostics
         final_state, diagnostics = jax.block_until_ready(
@@ -159,7 +160,7 @@ class QGModel:
                 self.timestepper,
                 nsteps,
                 interval_steps,
-                specs,
+                diagnostics_specs,
             )
         )
 
@@ -168,7 +169,7 @@ class QGModel:
             write_diagnostics_zarr(
                 saveto,
                 diagnostics,
-                specs,
+                diagnostics_specs,
                 self.params,
                 interval_steps=interval_steps,
                 attrs={

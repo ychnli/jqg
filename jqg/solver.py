@@ -1,6 +1,6 @@
 """
-This module defines the functions needed to compute the time derivative 
-of the model state used by the timestepper. It contains the "physics" 
+This module defines the functions needed to compute the time derivative
+of the model state used by the timestepper. It contains the "physics"
 of the model.
 """
 
@@ -22,6 +22,7 @@ from jqg.model import AbstractState, Aux, Params
 def _raise_if_cfl_exceeded(cfl):
     if float(cfl) > 1.0:
         raise ValueError(f"CFL condition violated: {cfl}")
+
 
 def _raise_if_nan(x):
     if jnp.isnan(x).any():
@@ -175,7 +176,8 @@ def run_kernel_interval(
 
         # it is expected that if any diagnostic has NaN, it will spread
         # to all diagnostics (this should be confirmed?)
-        jax.debug.callback(_raise_if_nan, reduced[specs[0].name])
+        if len(specs) > 0:
+            jax.debug.callback(_raise_if_nan, reduced[specs[0].name])
 
         return state, reduced
 

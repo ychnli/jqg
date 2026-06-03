@@ -22,13 +22,15 @@ def main():
     hour = 3600  # sec
     day = 24 * hour
 
-    T = 360 * day
-    dt = hour # 1 hr timestep
+    T = 300 * day
+    dt = hour  # 1 hr timestep
     nsteps = int(T / dt)
-    interval_steps = 12 # 12 hr save interval
+    interval_steps = 12  # 12 hr save interval
 
     # initialize PV anomalies to banded noise
-    q_upper = 3e-7 * np.random.rand(ny, nx) + 3e-6 * (np.ones((ny, 1)) * np.random.rand(1, nx))
+    q_upper = 3e-7 * np.random.rand(ny, nx) + 3e-6 * (
+        np.ones((ny, 1)) * np.random.rand(1, nx)
+    )
     q_lower = np.zeros((ny, nx))
 
     model = QGModel(
