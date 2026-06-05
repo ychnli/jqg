@@ -63,7 +63,6 @@ def benchmark_loop(T=180):
     diagnostics = build_diagnostics(["q", "psi", "u", "v"])
 
     start_time = timeit.default_timer()
-    print("Running model...")
     _ = jax.block_until_ready(
         model.run(
             nsteps=nsteps,
@@ -81,8 +80,8 @@ def main():
         times = []
         for _ in range(0, 10):
             times.append(benchmark_loop(T))
-        print(f"{T} : {mean(times) = }")
-        print(f"{T} : {stdev(times) = }")
+        print(f"> {T} : {mean(times) = }")
+        print(f"> {T} : {stdev(times) = }")
 
 
 if __name__ == "__main__":
