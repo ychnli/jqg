@@ -9,7 +9,6 @@ import timeit
 name = "barotropic_instability_ab3"
 save_dir = "output/examples"
 
-# Force JAX to use GPU (must be called before any JAX operations)
 print("Available devices:", jax.devices())
 # enable double precision
 jax.config.update("jax_enable_x64", True)
