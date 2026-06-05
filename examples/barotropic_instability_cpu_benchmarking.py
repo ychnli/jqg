@@ -1,6 +1,8 @@
 # Due to the limitations of running files on the server, there have to be two files, even though it is rather bad practice
 
 import jax
+# comment or uncomment this to force CPU.
+jax.config.update("jax_platform_name", "cpu")
 import numpy as np
 from jqg import QGModel
 from pathlib import Path
@@ -15,8 +17,6 @@ save_dir = "output/examples"
 print("Available devices:", jax.devices())
 # enable double precision
 
-# comment or uncomment this to force CPU.
-jax.config.update("jax_platform_name", "cpu")
 
 jax.config.update("jax_enable_x64", True)
 
