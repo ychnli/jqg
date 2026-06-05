@@ -1,3 +1,5 @@
+# Due to the limitations of running files on the server, there have to be two files, even though it is rather bad practice
+
 import jax
 import numpy as np
 from jqg import QGModel
@@ -13,11 +15,13 @@ save_dir = "output/examples"
 print("Available devices:", jax.devices())
 # enable double precision
 
+# comment or uncomment this to force CPU.
 jax.config.update("jax_platform_name", "cpu")
+
 jax.config.update("jax_enable_x64", True)
 
 
-def benchmark_loop():
+def benchmark_loop(T=180):
 
     nx, ny = 256, 256
     Lx, Ly = 1e6, 1e6
@@ -25,7 +29,7 @@ def benchmark_loop():
     hour = 3600  # sec
     day = 24 * hour
 
-    T = 180 * day
+    T *= day
     dt = hour / 16  # 15 min timestep
     nsteps = int(T / dt)
     interval_steps = 24  # 6 hourly save interval
@@ -73,11 +77,12 @@ def benchmark_loop():
 
 
 def main():
-    times = []
-    for _ in range(0, 100):
-        times.append(benchmark_loop())
-    print(f"{mean(times) = }")
-    print(f"{stdev(times) = }")
+    for T in [10, 50, 100, 250, 500]:
+        times = []
+        for _ in range(0, 10):
+            times.append(benchmark_loop(T))
+        print(f"{T} : {mean(times) = }")
+        print(f"{T} : {stdev(times) = }")
 
 
 if __name__ == "__main__":
